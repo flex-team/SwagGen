@@ -370,7 +370,13 @@ public class CodeFormatter {
         context["success"] = response.successful
         context["schema"] = response.response.value.schema.flatMap(getSchemaContext)
         context["description"] = response.response.value.description.description
-        context["type"] = response.response.value.schema.flatMap { getSchemaType(name: response.name, schema: $0) }
+        context["type"] = response.response.value.schema.flatMap {
+            let name = getSchemaType(name: response.name, schema: $0)
+            if let modelName = modelNames[name] {
+                return modelName
+            }
+            return name
+        }
 
         return context
     }
