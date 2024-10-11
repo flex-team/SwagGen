@@ -417,6 +417,13 @@ public class CodeFormatter {
     func getPropertyContext(_ property: Property) -> Context {
         var context: Context = getSchemaContext(property.schema)
 
+        switch property.schema.type {
+        case let .reference(reference):
+            context["isEnum"] = reference.value.metadata.enumValues?.isEmpty == false
+        default:
+            break
+        }
+
         if let json = context["raw"] as? [String: Any] {
             var newJson = json
             newJson["name"] = property.name
