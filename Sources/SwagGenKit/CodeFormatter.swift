@@ -417,13 +417,6 @@ public class CodeFormatter {
     func getPropertyContext(_ property: Property) -> Context {
         var context: Context = getSchemaContext(property.schema)
 
-        switch property.schema.type {
-        case let .reference(reference):
-            context["isEnum"] = reference.value.metadata.enumValues?.isEmpty == false
-        default:
-            break
-        }
-
         if let json = context["raw"] as? [String: Any] {
             var newJson = json
             newJson["name"] = property.name
@@ -434,7 +427,7 @@ public class CodeFormatter {
         context["optional"] = property.nullable
         context["name"] = propertyNames[property.name] ?? getName(property.name)      
         context["value"] = property.name
-        context["type"] = getSchemaType(name: property.name, schema: property.schema)
+        context["type"] = getPropertySchemaType(name: property.name, schema: property.schema)
 
         if case .array = property.schema.type {
             context["isArray"] = true
@@ -533,6 +526,10 @@ public class CodeFormatter {
     }
 
     func getSchemaType(name: String, schema: Schema, checkEnum: Bool = true) -> String {
+        return "UNKNOWN_SCHEMA_TYPE"
+    }
+
+    func getPropertySchemaType(name: String, schema: Schema, checkEnum: Bool = true) -> String {
         return "UNKNOWN_SCHEMA_TYPE"
     }
 

@@ -177,6 +177,107 @@ public class SwiftFormatter: CodeFormatter {
         }
     }
 
+    override func getPropertySchemaType(name: String, schema: Schema, checkEnum: Bool = true) -> String {
+
+        var enumValue: String?
+        if checkEnum {
+            enumValue = schema.getEnum(name: name, description: "").flatMap { getEnumContext($0)["enumName"] as? String }
+        }
+
+        if schema.canBeEnum, let enumValue = enumValue {
+            return enumValue
+        }
+
+        switch schema.type {
+        case .boolean:
+            return "Bool"
+        case let .string(item):
+            guard let format = item.format else {
+                return "String"
+            }
+            switch format {
+            case let .format(format):
+                switch format {
+                case .binary: return "File"
+                case .byte: return "File"
+                case .base64: return "String"
+                case .dateTime: return "DateTime"
+                case .date: return "DateDay"
+                case .email, .hostname, .ipv4, .ipv6, .password: return "String"
+                case .uri: return "URL"
+                case .uuid: return "ID"
+                }
+            case .other: return "String"
+            }
+        case let .number(item):
+            guard let format = item.format else {
+                return templateConfig.getStringOption("numberType") ?? "Double"
+            }
+            switch format {
+            case .double: return templateConfig.getStringOption("doubleType") ?? "Double"
+            case .float: return templateConfig.getStringOption("floatType") ?? "Float"
+            case .decimal: return templateConfig.getStringOption("decimalType") ?? "Decimal"
+            }
+        case let .integer(item):
+            guard let format = item.format else {
+                return "Int"
+            }
+
+            if fixedWidthIntegers {
+                switch format {
+                case .int8: return "Int8"
+                case .int16: return "Int16"
+                case .int32: return "Int32"
+                case .int64: return "Int64"
+                case .int: return "Int"
+                case .uint8: return "UInt8"
+                case .uint16: return "UInt16"
+                case .uint32: return "UInt32"
+                case .uint64: return "UInt64"
+                case .uint: return "UInt"
+                }
+            } else {
+                switch format {
+                case .int: return "Int"
+                case .uint: return "UInt"
+                default: return "Int"
+                }
+            }
+        case let .array(arraySchema):
+            switch arraySchema.items {
+            case let .single(type):
+                let typeString = getPropertySchemaType(name: name, schema: type, checkEnum: checkEnum)
+                return checkEnum ? "[\(enumValue ?? typeString)]" : typeString
+            case let .multiple(types):
+                let typeString = getPropertySchemaType(name: name, schema: types.first!, checkEnum: checkEnum)
+                return checkEnum ? "[\(enumValue ?? typeString)]" : typeString
+            }
+        case let .object(schema):
+            if let additionalProperties = schema.additionalProperties {
+                let typeString = getPropertySchemaType(name: name, schema: additionalProperties, checkEnum: checkEnum)
+                return checkEnum ? "[String: \(enumValue ?? typeString)]" : typeString
+            } else if schema.properties.isEmpty {
+                let anyType = templateConfig.getStringOption("anyType") ?? "Any"
+                return "[String: \(anyType)]"
+            } else {
+                return escapeType(name.upperCamelCased())
+            }
+        case let .reference(reference):
+            let typeString = getSchemaTypeName(reference.component)
+            let isEnum = reference.value.metadata.enumValues?.isEmpty == false
+            return isEnum ? "ResilientStringEnum<\(typeString)>" : typeString
+        case let .group(groupSchema):
+            if groupSchema.schemas.count == 1, let singleGroupSchema = groupSchema.schemas.first {
+                //flatten group schemas with only one schema
+                return getPropertySchemaType(name: name, schema: singleGroupSchema)
+            }
+
+            return escapeType(name.upperCamelCased())
+        case .any:
+            return templateConfig.getStringOption("anyType") ?? "Any"
+        }
+    }
+
     override func getSchemaContext(_ schema: Schema) -> Context {
         var context = super.getSchemaContext(schema)
 
