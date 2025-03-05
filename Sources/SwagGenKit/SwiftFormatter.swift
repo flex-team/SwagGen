@@ -164,7 +164,9 @@ public class SwiftFormatter: CodeFormatter {
                 return escapeType(name.upperCamelCased())
             }
         case let .reference(reference):
-            return getSchemaTypeName(reference.component)
+            let typeString = getSchemaTypeName(reference.component)
+            let isEnum = reference.value.metadata.enumValues?.isEmpty == false
+            return isEnum ? "ResilientStringEnum<\(typeString)>" : typeString
         case let .group(groupSchema):
             if groupSchema.schemas.count == 1, let singleGroupSchema = groupSchema.schemas.first {
                 //flatten group schemas with only one schema
