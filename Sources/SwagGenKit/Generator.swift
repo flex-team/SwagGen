@@ -20,7 +20,15 @@ public class Generator {
 
         let filterExtension = Extension()
         filterExtension.registerFilter("lowerCamelCase") { ($0 as? String)?.lowerCamelCased() ?? $0 }
-        filterExtension.registerFilter("upperCamelCase") { ($0 as? String)?.upperCamelCased() ?? $0 }
+        filterExtension.registerFilter("upperCamelCase") { value in
+            guard let string = value as? String else { return value }
+            let camelCased = string.upperCamelCased()
+            // Swift identifiers cannot start with a number, so prefix with underscore
+            if let firstChar = camelCased.first, firstChar.isNumber {
+                return "_" + camelCased
+            }
+            return camelCased
+        }
 
         let stencilSwiftKitExtension = Extension()
         stencilSwiftKitExtension.registerStencilSwiftExtensions()
